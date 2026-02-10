@@ -65,7 +65,7 @@
       ],
       "video_info": {
         "video.fps": 30,
-        "video.codec": "av1",
+        "video.codec": "mpeg4",
         "video.pix_fmt": "yuv420p",
         "video.is_depth_map": false,
         "has_audio": false
@@ -85,7 +85,7 @@
       ],
       "video_info": {
         "video.fps": 30,
-        "video.codec": "av1",
+        "video.codec": "mpeg4",
         "video.pix_fmt": "yuv420p",
         "video.is_depth_map": false,
         "has_audio": false

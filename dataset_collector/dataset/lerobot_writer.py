@@ -228,50 +228,106 @@ class LeRobotWriter:
         if not CV2_AVAILABLE:
             print("Warning: OpenCV not available, skipping video saving")
             return
-        
-        # Calculate ACTUAL FPS from episode timestamps (not target FPS)
-        actual_fps = episode.fps if episode.fps > 0 else self.fps
-        print(f"  Saving videos at {actual_fps:.1f} FPS (actual recorded rate)")
-        
-        # Group frames by camera
-        camera_frames: Dict[str, List[np.ndarray]] = {}
-        
-        for step in episode.steps:
-            for cam_name, frame in step.images.items():
-                if cam_name not in camera_frames:
-                    camera_frames[cam_name] = []
-                camera_frames[cam_name].append(frame)
-        
-        # Save each camera's frames as video
-        for cam_name, frames in camera_frames.items():
-            if not frames:
+
+        # Keep video FPS fixed to dataset FPS so metadata and videos stay aligned.
+        # Variable per-episode FPS can cause decode/timestamp inconsistencies.
+        video_fps = float(self.fps)
+        expected_frames = len(episode.steps)
+        print(f"  Saving videos at fixed {video_fps:.1f} FPS")
+
+        # Build camera list from all observed keys in the episode.
+        camera_names: List[str] = sorted(
+            {cam_name for step in episode.steps for cam_name in step.images.keys()}
+        )
+
+        # Save each camera's frames as video.
+        for cam_name in camera_names:
+            # Determine target frame size from first available frame.
+            first_frame = None
+            for step in episode.steps:
+                frame = step.images.get(cam_name)
+                if frame is not None:
+                    first_frame = self._normalize_frame(frame)
+                    break
+
+            if first_frame is None:
+                print(f"  Warning: no frames found for camera '{cam_name}', skipping video")
                 continue
-            
+
+            target_h, target_w = first_frame.shape[:2]
+            target_size = (target_w, target_h)
+
+            # Ensure frame count stays exactly aligned with tabular episode rows.
+            # If a frame is temporarily missing, repeat the last valid frame.
+            frames: List[np.ndarray] = []
+            last_valid_frame = first_frame
+            for step in episode.steps:
+                frame = step.images.get(cam_name)
+                if frame is None:
+                    frames.append(last_valid_frame.copy())
+                    continue
+
+                normalized = self._normalize_frame(frame, target_size=target_size)
+                frames.append(normalized)
+                last_valid_frame = normalized
+
+            if len(frames) != expected_frames:
+                raise RuntimeError(
+                    f"Camera '{cam_name}' frame count mismatch for episode {episode_index}: "
+                    f"{len(frames)} != {expected_frames}"
+                )
+
             # Create camera directory
             cam_dir = self.videos_path / f"observation.images.{cam_name}"
             cam_dir.mkdir(parents=True, exist_ok=True)
-            
+
             video_path = cam_dir / f"episode_{episode_index:06d}.mp4"
-            
-            # Get frame dimensions
-            height, width = frames[0].shape[:2]
-            
-            # Create video writer with ACTUAL FPS
+
+            # Create video writer
             fourcc = cv2.VideoWriter_fourcc(*self.video_codec)
             writer = cv2.VideoWriter(
                 str(video_path),
                 fourcc,
-                actual_fps,  # Use actual FPS, not target
-                (width, height)
+                video_fps,
+                target_size,
             )
-            
-            for frame in frames:
-                # Ensure BGR format for OpenCV
-                if len(frame.shape) == 2:
-                    frame = cv2.cvtColor(frame, cv2.COLOR_GRAY2BGR)
-                writer.write(frame)
-            
-            writer.release()
+
+            if not writer.isOpened():
+                raise RuntimeError(
+                    f"Failed to open VideoWriter for {video_path} "
+                    f"(codec='{self.video_codec}', size={target_size}, fps={video_fps})"
+                )
+
+            try:
+                for frame in frames:
+                    writer.write(frame)
+            finally:
+                writer.release()
+
+    def _normalize_frame(
+        self, frame: np.ndarray, target_size: Optional[tuple[int, int]] = None
+    ) -> np.ndarray:
+        """Normalize a frame for robust MP4 writing (BGR uint8, fixed size, contiguous)."""
+        if frame is None:
+            raise ValueError("Frame is None")
+
+        if frame.ndim == 2:
+            frame = cv2.cvtColor(frame, cv2.COLOR_GRAY2BGR)
+        elif frame.ndim == 3 and frame.shape[2] == 4:
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGRA2BGR)
+        elif frame.ndim != 3 or frame.shape[2] != 3:
+            raise ValueError(f"Unsupported frame shape: {frame.shape}")
+
+        if frame.dtype != np.uint8:
+            frame = np.clip(frame, 0, 255).astype(np.uint8)
+
+        if target_size is not None and (frame.shape[1], frame.shape[0]) != target_size:
+            frame = cv2.resize(frame, target_size, interpolation=cv2.INTER_AREA)
+
+        if not frame.flags["C_CONTIGUOUS"]:
+            frame = np.ascontiguousarray(frame)
+
+        return frame
     
     def _update_stats(self, df: 'pd.DataFrame'):
         """Update running statistics from episode data."""

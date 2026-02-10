@@ -695,9 +695,10 @@ class MainWindow(QMainWindow):
         
         # Start recording loop in background
         def record_loop():
-            while self._is_recording:
-                self.recorder.record_step()
-                time.sleep(1.0 / self.config.recording.fps)
+            # Use recorder's built-in rate controller for steadier timing.
+            self.recorder.record_continuously(
+                stop_condition=lambda: not self._is_recording
+            )
         
         self._record_thread = threading.Thread(target=record_loop, daemon=True)
         self._record_thread.start()
