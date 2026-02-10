@@ -49,8 +49,8 @@ echo "Python: $(which python) ($(python --version))"
 
 # ---- 3. Install CUDA toolkit via conda ----
 echo ""
-echo "Installing CUDA toolkit 12.1 via conda..."
-conda install -n "${CONDA_ENV_NAME}" cuda-toolkit=12.1 -c nvidia -y
+echo "Installing CUDA toolkit 12.6 via conda..."
+conda install -n "${CONDA_ENV_NAME}" cuda-toolkit=12.6 -c nvidia -y
 
 # Re-activate to pick up new env vars
 conda activate "${CONDA_ENV_NAME}"

@@ -1,15 +1,9 @@
-# Large repositories and dependencies
-Isaac-GR00T/
 
 # Model checkpoints (too large for git)
 checkpoints/
 
 # Python
 __pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
 .venv/
 venv/
 ENV/

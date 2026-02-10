@@ -1,28 +1,51 @@
 {
-  "observation.state": {
-    "type": "proprioceptive",
-    "modalities": [
-      {"name": "joint_positions", "shape": [6], "units": "degrees"},
-      {"name": "gripper_position", "shape": [1], "units": "percentage", "range": [0, 100]}
-    ]
+  "state": {
+    "joint_positions": {
+      "start": 0,
+      "end": 6,
+      "original_key": "observation.state"
+    },
+    "gripper_position": {
+      "start": 6,
+      "end": 7,
+      "original_key": "observation.state"
+    }
   },
   "action": {
-    "type": "proprioceptive",
-    "modalities": [
-      {"name": "joint_position_delta", "shape": [6], "units": "degrees"},
-      {"name": "gripper_action", "shape": [1], "units": "percentage"}
-    ]
+    "joint_positions": {
+      "start": 0,
+      "end": 6,
+      "original_key": "action"
+    },
+    "gripper_position": {
+      "start": 6,
+      "end": 7,
+      "original_key": "action"
+    }
   },
-  "observation.images.global": {
-    "type": "visual",
-    "modality": "rgb",
-    "shape": [360, 640, 3],
-    "encoding": "mp4"
+  "video": {
+    "global": {
+      "original_key": "observation.images.global",
+      "shape": [
+        360,
+        640,
+        3
+      ],
+      "encoding": "mp4"
+    },
+    "wrist": {
+      "original_key": "observation.images.wrist",
+      "shape": [
+        360,
+        640,
+        3
+      ],
+      "encoding": "mp4"
+    }
   },
-  "observation.images.wrist": {
-    "type": "visual",
-    "modality": "rgb", 
-    "shape": [360, 640, 3],
-    "encoding": "mp4"
+  "annotation": {
+    "human.task_description": {
+      "original_key": "task_index"
+    }
   }
 }

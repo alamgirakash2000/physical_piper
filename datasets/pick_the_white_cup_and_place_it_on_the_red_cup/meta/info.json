@@ -6,9 +6,90 @@
   "fps": 30,
   "num_episodes": 10,
   "total_frames": 5236,
+  "chunks_size": 1000,
+  "data_path": "data/chunk-{episode_chunk:03d}/episode_{episode_index:06d}.parquet",
+  "video_path": "videos/chunk-{episode_chunk:03d}/{video_key}/episode_{episode_index:06d}.mp4",
   "camera_names": [
     "wrist",
     "global"
   ],
-  "created_at": "2026-02-09T20:28:27Z"
+  "created_at": "2026-02-09T20:28:27Z",
+  "features": {
+    "episode_index": {
+      "dtype": "int64",
+      "shape": [
+        1
+      ]
+    },
+    "frame_index": {
+      "dtype": "int64",
+      "shape": [
+        1
+      ]
+    },
+    "index": {
+      "dtype": "int64",
+      "shape": [
+        1
+      ]
+    },
+    "timestamp": {
+      "dtype": "float64",
+      "shape": [
+        1
+      ]
+    },
+    "observation.state": {
+      "dtype": "float64",
+      "shape": [
+        7
+      ]
+    },
+    "action": {
+      "dtype": "float64",
+      "shape": [
+        7
+      ]
+    },
+    "observation.images.global": {
+      "dtype": "video",
+      "shape": [
+        360,
+        640,
+        3
+      ],
+      "names": [
+        "height",
+        "width",
+        "channels"
+      ],
+      "video_info": {
+        "video.fps": 30,
+        "video.codec": "av1",
+        "video.pix_fmt": "yuv420p",
+        "video.is_depth_map": false,
+        "has_audio": false
+      }
+    },
+    "observation.images.wrist": {
+      "dtype": "video",
+      "shape": [
+        360,
+        640,
+        3
+      ],
+      "names": [
+        "height",
+        "width",
+        "channels"
+      ],
+      "video_info": {
+        "video.fps": 30,
+        "video.codec": "av1",
+        "video.pix_fmt": "yuv420p",
+        "video.is_depth_map": false,
+        "has_audio": false
+      }
+    }
+  }
 }
