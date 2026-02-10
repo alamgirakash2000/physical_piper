@@ -26,9 +26,13 @@ BASE_MODEL="nvidia/GR00T-N1.6-3B"
 
 # Training hyperparameters
 NUM_GPUS=1
-MAX_STEPS=2000
-SAVE_STEPS=500
-BATCH_SIZE=8  # Reduce if OOM, increase if more VRAM
+MAX_STEPS=5000
+SAVE_STEPS=200
+BATCH_SIZE=1  # Per-device batch size (minimum for 24GB GPU)
+GRAD_ACCUM=8  # Gradient accumulation steps (effective batch = BATCH_SIZE * GRAD_ACCUM = 8)
+# Keep dataloader single-process to avoid intermittent worker segfaults
+# seen with forked workers + augmentation stacks on some systems.
+DATALOADER_WORKERS=0
 
 echo "============================================================"
 echo "GR00T N1.6 Fine-tuning for AgileX Piper Robot"
@@ -59,15 +63,21 @@ mkdir -p "${OUTPUT_DIR}"
 
 cd "${GROOT_DIR}"
 
+# Activate conda environment
+eval "$(conda shell.bash hook)"
+conda activate aeropiper
+
 echo "Starting fine-tuning..."
 echo ""
 
-# Set GPU visibility
+# Set GPU visibility and memory optimization
 export CUDA_VISIBLE_DEVICES=0
 export NUM_GPUS=${NUM_GPUS}
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+export TOKENIZERS_PARALLELISM=false
 
 # Run fine-tuning
-uv run python gr00t/experiment/launch_finetune.py \
+python gr00t/experiment/launch_finetune.py \
     --base-model-path "${BASE_MODEL}" \
     --dataset-path "${DATASET_PATH}" \
     --embodiment-tag NEW_EMBODIMENT \
@@ -78,8 +88,9 @@ uv run python gr00t/experiment/launch_finetune.py \
     --save-steps ${SAVE_STEPS} \
     --max-steps ${MAX_STEPS} \
     --global-batch-size ${BATCH_SIZE} \
+    --gradient-accumulation-steps ${GRAD_ACCUM} \
     --color-jitter-params brightness 0.3 contrast 0.4 saturation 0.5 hue 0.08 \
-    --dataloader-num-workers 4
+    --dataloader-num-workers ${DATALOADER_WORKERS}
 
 echo ""
 echo "============================================================"
