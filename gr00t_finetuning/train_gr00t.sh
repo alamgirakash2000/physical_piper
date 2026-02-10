@@ -20,7 +20,7 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 GROOT_DIR="${SCRIPT_DIR}/Isaac-GR00T"
 DATASET_PATH="${SCRIPT_DIR}/../datasets/pick_the_white_cup_and_place_it_on_the_red_cup"
-MODALITY_CONFIG="${SCRIPT_DIR}/piper_modality.json"
+MODALITY_CONFIG="${SCRIPT_DIR}/piper_modality_config.py"
 OUTPUT_DIR="${SCRIPT_DIR}/checkpoints/piper_finetune"
 BASE_MODEL="nvidia/GR00T-N1.6-3B"
 

@@ -1,63 +1,60 @@
 # AgileX Piper Robot Modality Configuration for GR00T N1.6
-# This file defines the state and action spaces for the Piper 6-DOF arm + gripper
+# This file is loaded by launch_finetune.py to register the Piper embodiment.
+# Follows the same pattern as oxe_droid in gr00t/configs/data/embodiment_configs.py
 
-from dataclasses import dataclass
-from gr00t.data.modality import ModalityConfig
+from gr00t.data.embodiment_tags import EmbodimentTag
+from gr00t.data.types import (
+    ActionConfig,
+    ActionFormat,
+    ActionRepresentation,
+    ActionType,
+    ModalityConfig,
+)
+from gr00t.configs.data.embodiment_configs import register_modality_config
 
+# Piper robot config: 6-DOF arm + gripper
+# State: observation.state = [joint1..joint6, gripper] (7D)
+# Action: action = [joint_delta1..joint_delta6, gripper_action] (7D)
+# Video: global (overhead) + wrist cameras
 
-def get_piper_modality_config():
-    """
-    Create modality config for AgileX Piper robot.
-    
-    State space: 7D (6 joint angles + 1 gripper position)
-    Action space: 7D (6 joint deltas + 1 gripper action)
-    Images: global (overhead) + wrist cameras
-    """
-    
-    config = ModalityConfig(
-        # State observation configuration
-        state_config={
-            "state_keys": ["observation.state"],
-            "state_dims": {
-                "joint_positions": 6,  # 6 DOF arm
-                "gripper_position": 1,  # Gripper position (0-100%)
-            },
-            "state_normalization": {
-                "joint_positions": {"min": -180.0, "max": 180.0},  # degrees
-                "gripper_position": {"min": 0.0, "max": 100.0},   # percentage
-            }
-        },
-        
-        # Action configuration
-        action_config={
-            "action_keys": ["action"],
-            "action_dims": {
-                "joint_position_delta": 6,  # Delta joint positions
-                "gripper_action": 1,         # Gripper action
-            },
-            "action_normalization": {
-                "joint_position_delta": {"min": -10.0, "max": 10.0},  # degrees
-                "gripper_action": {"min": -50.0, "max": 50.0},       # percentage
-            }
-        },
-        
-        # Image observation configuration  
-        image_config={
-            "image_keys": [
-                "observation.images.global",   # Overhead camera view
-                "observation.images.wrist",    # Wrist-mounted camera
-            ],
-            "image_height": 360,
-            "image_width": 640,
-        },
-        
-        # Total dimensions
-        state_dim=7,   # 6 joints + 1 gripper
-        action_dim=7,  # 6 joint deltas + 1 gripper action
-    )
-    
-    return config
+PIPER_MODALITY_CONFIG = {
+    "video": ModalityConfig(
+        delta_indices=[0],
+        modality_keys=["global", "wrist"],
+    ),
+    "state": ModalityConfig(
+        delta_indices=[0],
+        modality_keys=[
+            "joint_positions",
+            "gripper_position",
+        ],
+    ),
+    "action": ModalityConfig(
+        delta_indices=list(range(0, 16)),  # action horizon of 16
+        modality_keys=[
+            "joint_positions",
+            "gripper_position",
+        ],
+        action_configs=[
+            # joint_positions (6D) - relative deltas
+            ActionConfig(
+                rep=ActionRepresentation.RELATIVE,
+                type=ActionType.NON_EEF,
+                format=ActionFormat.DEFAULT,
+            ),
+            # gripper_position (1D) - absolute position
+            ActionConfig(
+                rep=ActionRepresentation.ABSOLUTE,
+                type=ActionType.NON_EEF,
+                format=ActionFormat.DEFAULT,
+            ),
+        ],
+    ),
+    "language": ModalityConfig(
+        delta_indices=[0],
+        modality_keys=["annotation.human.task_description"],
+    ),
+}
 
-
-# For direct import
-PIPER_MODALITY_CONFIG = get_piper_modality_config()
+# Register on import (this is what launch_finetune.py expects)
+register_modality_config(PIPER_MODALITY_CONFIG, EmbodimentTag.NEW_EMBODIMENT)
