@@ -6,6 +6,7 @@ datasets/
 datset/
 data/
 checkpoints/
+dp_policy/data/
 
 # Top-level training/runtime folders
 /runs/

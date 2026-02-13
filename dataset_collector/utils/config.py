@@ -4,14 +4,14 @@
 import json
 from pathlib import Path
 from dataclasses import dataclass, field, asdict
-from typing import List, Optional
+from typing import List, Optional, Union
 
 
 @dataclass
 class CameraConfig:
     """Camera configuration."""
     name: str
-    device_index: int
+    device_index: Union[int, str]
     width: int = 1280
     height: int = 720
     fps: int = 30

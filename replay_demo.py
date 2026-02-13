@@ -198,6 +198,7 @@ Examples:
     parser.add_argument("--speed", "-s", type=float, default=1.0, help="Speed multiplier (default: 1.0)")
     parser.add_argument("--list", "-l", action="store_true", help="List all available demos")
     parser.add_argument("--dataset", type=str, help="Path to dataset directory (optional)")
+    parser.add_argument("--can-interface", type=str, default="can0", help="CAN interface name (default: can0)")
     parser.add_argument("--dry-run", action="store_true", help="Don't send commands to robot, just simulate")
     parser.add_argument("--no-smooth", action="store_true", help="Disable trajectory interpolation")
     
@@ -264,8 +265,8 @@ Examples:
     except ImportError:
         print("Error: Could not import RobotController. Make sure you're in the project directory.")
         return 1
-    
-    robot = RobotController()
+
+    robot = RobotController(can_interface=args.can_interface)
     
     # Try to connect with timeout
     print("  Enabling robot (this may take a moment)...")

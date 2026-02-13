@@ -80,6 +80,7 @@ class CameraWidget(QLabel):
     def __init__(self, camera_name: str, parent=None):
         super().__init__(parent)
         self.camera_name = camera_name
+        self.display_name = self._format_display_name(camera_name)
         self.setMinimumSize(320, 240)
         self.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.setStyleSheet(f"""
@@ -87,9 +88,19 @@ class CameraWidget(QLabel):
             border-radius: 12px;
             border: 2px solid rgba(255, 255, 255, 0.1);
         """)
-        self.setText(f"📷 {camera_name.upper()}\nWaiting for feed...")
+        self.setText(f"📷 {self.display_name}\nWaiting for feed...")
         
         self._recording = False
+
+    @staticmethod
+    def _format_display_name(camera_name: str) -> str:
+        """Format human-friendly camera name for UI labels."""
+        name = camera_name.strip().lower()
+        if "wrist" in name:
+            return "WRIST CAMERA"
+        if "global" in name:
+            return "GLOBAL CAMERA"
+        return f"{camera_name.upper()} CAMERA"
     
     def update_frame(self, frame: np.ndarray):
         """Update displayed frame."""
@@ -526,6 +537,16 @@ class MainWindow(QMainWindow):
         self.camera_widgets: Dict[str, CameraWidget] = {}
         for cam_config in self.config.cameras:
             cam_widget = CameraWidget(cam_config.name)
+
+            cam_title = QLabel(cam_widget.display_name)
+            cam_title.setStyleSheet(f"""
+                color: {COLORS['text_secondary']};
+                font-weight: 700;
+                letter-spacing: 0.5px;
+                padding: 2px 0 4px 2px;
+            """)
+            cameras_layout.addWidget(cam_title)
+
             cam_widget.setMinimumHeight(180)
             cameras_layout.addWidget(cam_widget)
             self.camera_widgets[cam_config.name] = cam_widget

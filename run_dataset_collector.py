@@ -29,6 +29,13 @@ os.environ["OPENCV_LOG_LEVEL"] = "SILENT"
 # Ensure we can find our package
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+def _sanitize_qt_plugin_env():
+    """Avoid OpenCV Qt plugin path hijacking PyQt6 plugin discovery."""
+    for key in ("QT_QPA_PLATFORM_PLUGIN_PATH", "QT_PLUGIN_PATH"):
+        value = os.environ.get(key)
+        if value and "cv2/qt/plugins" in value:
+            os.environ.pop(key, None)
+
 
 def check_dependencies():
     """Check that all required dependencies are installed."""
@@ -41,6 +48,7 @@ def check_dependencies():
     
     try:
         import cv2
+        _sanitize_qt_plugin_env()
     except ImportError:
         missing.append("opencv-python (pip install opencv-python)")
     
@@ -93,6 +101,7 @@ def print_banner():
 def main():
     """Main entry point."""
     print_banner()
+    _sanitize_qt_plugin_env()
     
     print("Checking dependencies...")
     if not check_dependencies():

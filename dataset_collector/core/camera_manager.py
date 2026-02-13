@@ -4,12 +4,14 @@
 import time
 import threading
 import numpy as np
-from typing import Optional, Dict, List, Tuple, Callable
+from typing import Optional, Dict, List, Tuple, Callable, Union
 from dataclasses import dataclass
 from queue import Queue, Empty
 import cv2
 import os
 import sys
+import re
+from pathlib import Path
 from contextlib import contextmanager
 
 # Suppress libjpeg warnings by setting OpenCV log level
@@ -36,7 +38,7 @@ class Camera:
     def __init__(
         self,
         name: str,
-        device_index: int,
+        device_index: Union[int, str],
         width: int = 1280,
         height: int = 720,
         fps: int = 30
@@ -50,6 +52,77 @@ class Camera:
         self._capture: Optional[cv2.VideoCapture] = None
         self._lock = threading.Lock()
         self._last_frame: Optional[CameraFrame] = None
+
+    def _candidate_sources(self) -> List[Union[int, str]]:
+        """Return candidate source identifiers to try opening."""
+        if isinstance(self.device_index, int):
+            return [self.device_index]
+
+        source = str(self.device_index)
+        candidates: List[Union[int, str]] = [source]
+
+        # If using /dev/v4l/by-id symlink, also try sibling index node.
+        if "video-index0" in source:
+            candidates.append(source.replace("video-index0", "video-index1"))
+        elif "video-index1" in source:
+            candidates.append(source.replace("video-index1", "video-index0"))
+
+        # Also try resolved /dev/videoN and adjacent node as fallback.
+        try:
+            resolved = str(Path(source).resolve())
+            candidates.append(resolved)
+            match = re.search(r"/dev/video(\d+)$", resolved)
+            if match:
+                idx = int(match.group(1))
+                if idx + 1 <= 63:
+                    candidates.append(f"/dev/video{idx + 1}")
+                if idx - 1 >= 0:
+                    candidates.append(f"/dev/video{idx - 1}")
+        except Exception:
+            pass
+
+        # Deduplicate while preserving order.
+        deduped: List[Union[int, str]] = []
+        seen = set()
+        for item in candidates:
+            key = str(item)
+            if key not in seen:
+                deduped.append(item)
+                seen.add(key)
+        return deduped
+
+    def _open_source(self, source: Union[int, str], backend: Optional[int]) -> Optional[cv2.VideoCapture]:
+        """Try opening one source/backend combination."""
+        try:
+            cap = cv2.VideoCapture(source, backend) if backend is not None else cv2.VideoCapture(source)
+            if cap is None or not cap.isOpened():
+                if cap is not None:
+                    cap.release()
+                return None
+            return cap
+        except Exception:
+            return None
+
+    def _configure_and_validate(self, cap: cv2.VideoCapture, codec: Optional[str]) -> bool:
+        """Apply capture settings and verify we can read frames."""
+        if codec:
+            cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*codec))
+
+        cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.width)
+        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.height)
+        cap.set(cv2.CAP_PROP_FPS, self.fps)
+        cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+        cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 3)
+
+        # Flush and validate by reading a few frames.
+        for _ in range(5):
+            cap.grab()
+        for _ in range(12):
+            ret, frame = cap.read()
+            if ret and frame is not None and frame.size > 0:
+                return True
+            time.sleep(0.01)
+        return False
     
     def open(self) -> bool:
         """Open the camera device."""
@@ -58,43 +131,45 @@ class Camera:
                 return True
             
             try:
-                # Try V4L2 backend on Linux for lower latency
-                self._capture = cv2.VideoCapture(self.device_index, cv2.CAP_V4L2)
-                
-                if not self._capture.isOpened():
-                    # Fallback to default backend
-                    self._capture = cv2.VideoCapture(self.device_index)
-                
-                if not self._capture.isOpened():
+                selected_source: Optional[Union[int, str]] = None
+                selected_codec: Optional[str] = None
+
+                for source in self._candidate_sources():
+                    for backend in (cv2.CAP_V4L2, None):
+                        cap = self._open_source(source, backend)
+                        if cap is None:
+                            continue
+
+                        ok = False
+                        # Prefer non-MJPEG first to avoid noisy decode issues, then MJPEG fallback.
+                        for codec in ("YUYV", "MJPG", None):
+                            if self._configure_and_validate(cap, codec):
+                                ok = True
+                                selected_codec = codec
+                                break
+
+                        if ok:
+                            self._capture = cap
+                            selected_source = source
+                            break
+                        cap.release()
+                    if self._capture is not None:
+                        break
+
+                if self._capture is None:
                     print(f"Error: Could not open camera {self.name} (device {self.device_index})")
-                    self._capture = None
                     return False
-                
-                # Configure camera - set format first for better compatibility
-                # Use MJPEG for higher frame rates (and suppress warnings)
-                self._capture.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
-                
-                # Set resolution and FPS
-                self._capture.set(cv2.CAP_PROP_FRAME_WIDTH, self.width)
-                self._capture.set(cv2.CAP_PROP_FRAME_HEIGHT, self.height)
-                self._capture.set(cv2.CAP_PROP_FPS, self.fps)
-                
-                # Reduce buffer size to minimize latency (critical for wrist camera)
-                self._capture.set(cv2.CAP_PROP_BUFFERSIZE, 1)
-                
-                # Auto-exposure: 1 = manual, 3 = auto
-                self._capture.set(cv2.CAP_PROP_AUTO_EXPOSURE, 3)
-                
-                # Flush buffer to get fresh frames
-                for _ in range(10):
-                    self._capture.grab()
                 
                 # Read actual settings
                 actual_width = int(self._capture.get(cv2.CAP_PROP_FRAME_WIDTH))
                 actual_height = int(self._capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
                 actual_fps = self._capture.get(cv2.CAP_PROP_FPS)
                 
-                print(f"Camera {self.name}: {actual_width}x{actual_height} @ {actual_fps:.1f} FPS")
+                print(
+                    f"Camera {self.name} ({selected_source}): "
+                    f"{actual_width}x{actual_height} @ {actual_fps:.1f} FPS"
+                    f"{'' if selected_codec is None else f' [{selected_codec}]'}"
+                )
                 
                 # Update our width/height to actual values
                 self.width = actual_width
@@ -167,7 +242,7 @@ class CameraManager:
     def add_camera(
         self,
         name: str,
-        device_index: int,
+        device_index: Union[int, str],
         width: int = 1280,
         height: int = 720,
         fps: int = 30

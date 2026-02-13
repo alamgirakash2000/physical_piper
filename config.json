@@ -2,14 +2,14 @@
     "cameras": [
         {
             "name": "wrist",
-            "device_index": 0,
+            "device_index": "/dev/v4l/by-id/usb-046d_HD_Pro_Webcam_C920_CEECBDAF-video-index0",
             "width": 640,
             "height": 360,
             "fps": 30
         },
         {
             "name": "global",
-            "device_index": 2,
+            "device_index": "/dev/v4l/by-id/usb-046d_081b_3E546F10-video-index0",
             "width": 640,
             "height": 360,
             "fps": 30

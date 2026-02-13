@@ -110,6 +110,26 @@ class RobotController:
                 ["ip", "link", "show", self.can_interface],
                 capture_output=True, text=True
             )
+            if result.returncode != 0:
+                print(f"CAN interface '{self.can_interface}' not found.")
+                try:
+                    links = subprocess.run(
+                        ["ip", "-br", "link", "show"],
+                        capture_output=True, text=True, check=False
+                    )
+                    candidates = []
+                    for line in links.stdout.splitlines():
+                        name = line.split()[0] if line.split() else ""
+                        if "can" in name or "slcan" in name or "vcan" in name:
+                            candidates.append(name)
+                    if candidates:
+                        print(f"Available CAN-like interfaces: {', '.join(candidates)}")
+                    else:
+                        print("No CAN-like interfaces detected. Check adapter/driver.")
+                except Exception:
+                    pass
+                return False
+
             if "UP" in result.stdout:
                 return True
             
@@ -119,13 +139,19 @@ class RobotController:
                 ["sudo", "ip", "link", "set", self.can_interface, "type", "can", "bitrate", "1000000"],
                 ["sudo", "ip", "link", "set", self.can_interface, "up"],
             ]:
-                subprocess.run(cmd, check=True, stderr=subprocess.DEVNULL)
+                subprocess.run(cmd, check=True, capture_output=True, text=True)
             
             result = subprocess.run(
                 ["ip", "link", "show", self.can_interface],
                 capture_output=True, text=True
             )
             return "UP" in result.stdout
+        except subprocess.CalledProcessError as e:
+            details = (e.stderr or e.stdout or "").strip()
+            print(f"CAN setup command failed: {' '.join(e.cmd)}")
+            if details:
+                print(f"Details: {details}")
+            return False
         except Exception as e:
             print(f"CAN setup failed: {e}")
             return False
