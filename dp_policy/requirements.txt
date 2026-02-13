@@ -1,0 +1,14 @@
+pandas
+pyarrow
+zarr<3
+numcodecs<0.16
+opencv-python
+hydra-core
+diffusers
+einops
+wandb
+dill
+filelock
+threadpoolctl
+av
+numba

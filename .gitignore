@@ -1,0 +1,51 @@
+# Top-level project artifacts
+/output/
+/dataset/
+/datset/
+/data/
+/checkpoints/
+
+# Top-level training/runtime folders
+/runs/
+/wandb/
+/tb_logs/
+/tensorboard/
+/logs/
+
+# Python caches
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Test/lint/type caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.pyre/
+.tox/
+.nox/
+.coverage
+.coverage.*
+htmlcov/
+
+# Build/packaging
+/build/
+/dist/
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+
+# Virtual environments (top-level)
+/.venv/
+/venv/
+/env/
+
+# Notebook checkpoints
+.ipynb_checkpoints/
+
+# Logs and local editor/OS files
+*.log
+.vscode/
+.idea/
+*.swp
+.DS_Store

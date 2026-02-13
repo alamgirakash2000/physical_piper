@@ -1,0 +1,9 @@
+{
+  "source_lerobot_dataset": "/home/alamgir/Downloads/physical_aeropiper/datasets/pick_the_white_cup_and_place_it_on_the_red_cup",
+  "camera0_key": "observation.images.global",
+  "camera1_key": "observation.images.wrist",
+  "image_width": 128,
+  "image_height": 128,
+  "num_episodes": 10,
+  "num_steps": 5236
+}

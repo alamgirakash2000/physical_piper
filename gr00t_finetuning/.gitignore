@@ -1,6 +1,7 @@
 
 # Model checkpoints (too large for git)
 checkpoints/
+Isaac-GR00T/
 
 # Python
 __pycache__/
