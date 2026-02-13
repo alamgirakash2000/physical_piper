@@ -1,9 +1,11 @@
-# Top-level project artifacts
-/output/
-/dataset/
-/datset/
-/data/
-/checkpoints/
+# Project artifacts (any depth)
+output/
+outputs/
+dataset/
+datasets/
+datset/
+data/
+checkpoints/
 
 # Top-level training/runtime folders
 /runs/
